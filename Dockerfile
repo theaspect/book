@@ -1,27 +1,55 @@
 # docker build -f Dockerfile -t sandbox -t theaspect/sandbox .
 # docker push theaspect/sandbox
-# docker run -it sandbox
+# docker run --rm -it sandbox
 # fb849f09398221adceddc5c930af6d691cf91df6e5450a4b8857ba539235ba78
-FROM nixos/nix:2.9.1-amd64
+# See https://hub.docker.com/r/nixos/nix
+FROM debian:11.3-slim 
 
-RUN nix-channel --update
+# Use bash instead of sh
+RUN rm /bin/sh && ln -s /bin/bash /bin/sh
 
-RUN nix-env -iA nixpkgs.cling
-RUN nix-env -iA nixpkgs.jdk
-RUN nix-env -iA nixpkgs.kotlin
-RUN nix-env -iA nixpkgs.python3
-RUN nix-env -iA nixpkgs.ruby
-RUN nix-env -iA nixpkgs.nodejs
+# Interpreters
+RUN apt update && apt install --no-install-recommends --yes \
+    python3.9 \
+    ruby2.7 \
+    nodejs \
+    openjdk-11-jdk \
+    curl \
+    zip \
+    unzip \
+    && rm -rf /var/lib/apt/lists/*
 
-# Manually install ki
-# https://github.com/Kotlin/kotlin-interactive-shell/issues/110
-RUN nix-env -iA nixpkgs.gawk
-RUN nix-env -iA nixpkgs.unzip
-RUN nix-env -iA nixpkgs.curl
+# root/cling dependencies
+RUN apt update && apt install --no-install-recommends --yes \
+    dpkg-dev \
+    cmake \
+    g++ \
+    gcc \
+    binutils \
+    libx11-dev \
+    libxpm-dev \
+    libxft-dev \
+    libxext-dev \
+    libssl-dev \
+    && rm -rf /var/lib/apt/lists/*
 
-RUN curl --location -o ki-archive.zip https://github.com/Kotlin/kotlin-interactive-shell/releases/download/v0.4.5/ki-archive.zip
-RUN unzip ki-archive.zip -d /root/.nix-profile/
-RUN rm ki-archive.zip
-RUN mv /root/.nix-profile/ki/bin/* /root/.nix-profile/bin/
-RUN mv /root/.nix-profile/ki/lib/* /root/.nix-profile/lib/
-RUN rm -rf /root/.nix-profile/ki/
+# Install ki
+RUN curl -s https://get.sdkman.io | bash && \
+    chmod a+x "$HOME/.sdkman/bin/sdkman-init.sh" && \
+    source "$HOME/.sdkman/bin/sdkman-init.sh" && \
+    sdk install kotlin && \
+    sdk install ki
+
+# Install root
+RUN mkdir /root/.root/ && \
+    curl https://root.cern/download/root_v6.24.02.Linux-ubuntu20-x86_64-gcc9.3.tar.gz | tar -xzv -C /opt/ && \
+    source /opt/root/bin/thisroot.sh
+
+# Install useful deps
+RUN apt update && apt install --no-install-recommends --yes \
+    mc \
+    xxd \
+    && rm -rf /var/lib/apt/lists/*
+
+# Setup env for root
+RUN echo '[[ -s "/opt/root/bin/thisroot.sh" ]] && source "/opt/root/bin/thisroot.sh"' >> /root/.bashrc
