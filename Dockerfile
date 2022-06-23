@@ -49,7 +49,18 @@ RUN mkdir /root/.root/ && \
 RUN apt update && apt install --no-install-recommends --yes \
     mc \
     xxd \
+    locales \
+    && sed -ie "s/# en_US.UTF-8 UTF-8/en_US.UTF-8 UTF-8/" /etc/locale.gen \
+    && sed -ie "s/# ru_RU.UTF-8 UTF-8/ru_RU.UTF-8 UTF-8/" /etc/locale.gen \
+    && dpkg-reconfigure --frontend=noninteractive locales \
     && rm -rf /var/lib/apt/lists/*
+
+ENV LANG ru_RU.UTF-8
+ENV LANGUAGE ru_RU:ru
+ENV LC_LANG ru_RU.UTF-8
+ENV LC_ALL ru_RU.UTF-8
 
 # Setup env for root
 RUN echo '[[ -s "/opt/root/bin/thisroot.sh" ]] && source "/opt/root/bin/thisroot.sh"' >> /root/.bashrc
+
+WORKDIR /root
